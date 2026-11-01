@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sprite Editor — All the Things You Are</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; font-family: monospace; color: #eee; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    #header { padding: 6px 12px; background: #1e1e1e; border-bottom: 1px solid #333; font-size: 12px; color: #777; flex-shrink: 0; }
+
+    #viewport { flex: 1; position: relative; overflow: hidden; }
+
+    #canvas-container {
+      position: absolute;
+      width: 1920px;
+      height: 1080px;
+      transform-origin: top left;
+      overflow: hidden;
+    }
+
+    #bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+    .sprite {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: grab;
+      user-select: none;
+      transform: translate(-50%, -50%);
+    }
+    .sprite:active { cursor: grabbing; }
+
+    .img-wrapper { position: relative; flex-shrink: 0; }
+    .sprite img { display: block; image-rendering: pixelated; }
+
+    .resize-handle {
+      position: absolute;
+      bottom: -8px;
+      right: -8px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border: 2px solid #444;
+      border-radius: 50%;
+      cursor: nwse-resize;
+    }
+
+    .label {
+      font-size: 24px;
+      font-weight: bold;
+      color: #222;
+      text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #output-panel { height: 200px; background: #0d1117; border-top: 1px solid #30363d; display: flex; flex-direction: column; flex-shrink: 0; }
+    #output-header { padding: 6px 12px; background: #161b22; font-size: 12px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; }
+    #copy-btn { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 3px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-family: monospace; }
+    #copy-btn:hover { background: #388bfd; border-color: #388bfd; color: #fff; }
+    #output-code { flex: 1; overflow: auto; padding: 8px 14px; font-size: 11px; color: #79c0ff; white-space: pre; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="header">Drag to move &nbsp;·&nbsp; Drag ● corner handle to resize &nbsp;·&nbsp; Copy output below → paste into src/positions.ts</div>
+  <div id="viewport">
+    <div id="canvas-container">
+      <img id="bg" src="/public/clouds.jpg" />
+    </div>
+  </div>
+  <div id="output-panel">
+    <div id="output-header">
+      <span>src/positions.ts</span>
+      <button id="copy-btn" onclick="copyOutput()">Copy</button>
+    </div>
+    <div id="output-code"></div>
+  </div>
+
+  <script>
+    const NOTE_TO_FORM = {
+      "C": "crayon", "C#": "teapot", "D": "duck", "D#": "saxophone",
+      "E": "email", "F": "finance", "F#": "phone", "G": "geometry",
+      "G#": "toaster", "A": "airplane", "A#": "pea-shooter", "B": "basketball",
+    };
+
+    // sprite file for each key (cat is special — no note label, different filename)
+    function spriteFor(key) {
+      if (key === "cat") return "/public/sprites/cat1.PNG";
+      return `/public/sprites/${NOTE_TO_FORM[key]}-idle.PNG`;
+    }
+
+    // Mirrors src/positions.ts — paste updated values back here to pick up changes
+    const state = {
+      "cat": { x:  960, y:  540, size: 240 },
+      "C":   { x:  228, y:  174, size: 275 },
+      "C#":  { x:  610, y:  224, size: 271 },
+      "D":   { x: 1075, y:  164, size: 268 },
+      "D#":  { x: 1452, y:  292, size: 280 },
+      "E":   { x: 1682, y:  177, size: 300 },
+      "F":   { x: 1732, y:  568, size: 232 },
+      "F#":  { x: 1630, y:  872, size: 255 },
+      "G":   { x: 1366, y:  721, size: 232 },
+      "G#":  { x: 1056, y:  868, size: 352 },
+      "A":   { x:  617, y:  803, size: 257 },
+      "A#":  { x:  247, y:  916, size: 368 },
+      "B":   { x:  319, y:  514, size: 316 },
+    };
+
+    const CANVAS_W = 1920, CANVAS_H = 1080;
+    const container = document.getElementById("canvas-container");
+    const viewport  = document.getElementById("viewport");
+    let scale = 1;
+
+    function rescale() {
+      const vw = viewport.clientWidth, vh = viewport.clientHeight;
+      scale = Math.min(vw / CANVAS_W, vh / CANVAS_H);
+      const left = (vw - CANVAS_W * scale) / 2;
+      const top  = (vh - CANVAS_H * scale) / 2;
+      container.style.transform = `scale(${scale})`;
+      container.style.left = left + "px";
+      container.style.top  = top + "px";
+    }
+    window.addEventListener("resize", rescale);
+    rescale();
+
+    // Build sprite DOM
+    const spriteEls = {};
+    for (const [note, pos] of Object.entries(state)) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "sprite";
+      wrapper.dataset.note = note;
+      wrapper.style.left = pos.x + "px";
+      wrapper.style.top  = pos.y + "px";
+
+      const imgWrapper = document.createElement("div");
+      imgWrapper.className = "img-wrapper";
+
+      const img = document.createElement("img");
+      img.src    = spriteFor(note);
+      img.width  = pos.size;
+      img.height = pos.size;
+      imgWrapper.appendChild(img);
+
+      const handle = document.createElement("div");
+      handle.className = "resize-handle";
+      handle.dataset.resizeNote = note;
+      imgWrapper.appendChild(handle);
+
+      wrapper.appendChild(imgWrapper);
+
+      if (note !== "cat") {
+        const label = document.createElement("div");
+        label.className = "label";
+        label.textContent = note;
+        wrapper.appendChild(label);
+      }
+      container.appendChild(wrapper);
+      spriteEls[note] = { wrapper, img };
+    }
+
+    // Drag state
+    let drag = null;
+
+    document.addEventListener("mousedown", e => {
+      if (e.target.dataset.resizeNote) {
+        const note = e.target.dataset.resizeNote;
+        drag = { note, type: "resize", startX: e.clientX / scale, startSize: state[note].size };
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      const wrapper = e.target.closest(".sprite");
+      if (!wrapper) return;
+      const note = wrapper.dataset.note;
+      drag = {
+        note, type: "move",
+        startX: e.clientX / scale - state[note].x,
+        startY: e.clientY / scale - state[note].y,
+      };
+      e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!drag) return;
+      const { note, type } = drag;
+
+      if (type === "move") {
+        state[note].x = Math.round(e.clientX / scale - drag.startX);
+        state[note].y = Math.round(e.clientY / scale - drag.startY);
+      } else {
+        const dx = e.clientX / scale - drag.startX;
+        state[note].size = Math.max(40, Math.round(drag.startSize + dx));
+      }
+
+      applySprite(note);
+      updateOutput();
+    });
+
+    document.addEventListener("mouseup", () => { drag = null; });
+
+    function applySprite(note) {
+      const { wrapper, img } = spriteEls[note];
+      const pos = state[note];
+      wrapper.style.left = pos.x + "px";
+      wrapper.style.top  = pos.y + "px";
+      img.width  = pos.size;
+      img.height = pos.size;
+    }
+
+    function updateOutput() {
+      const lines = Object.entries(state).map(([note, pos]) => {
+        const key = (note.includes("#") || note === "cat") ? `"${note}"` : note;
+        return `  ${key.padEnd(5)}: { x: ${String(pos.x).padStart(4)}, y: ${String(pos.y).padStart(4)}, size: ${pos.size} },`;
+      });
+      document.getElementById("output-code").textContent =
+        `export const POSITIONS: Record<string, { x: number; y: number; size: number }> = {\n${lines.join("\n")}\n};`;
+    }
+
+    function copyOutput() {
+      navigator.clipboard.writeText(document.getElementById("output-code").textContent).then(() => {
+        const btn = document.getElementById("copy-btn");
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy", 1500);
+      });
+    }
+
+    updateOutput();
+  </script>
+</body>
+</html>

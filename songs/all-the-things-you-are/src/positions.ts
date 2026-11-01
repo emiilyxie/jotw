@@ -1,0 +1,15 @@
+export const POSITIONS: Record<string, { x: number; y: number; size: number }> = {
+  "cat": { x:  971, y:  554, size: 1089 },
+  C    : { x:  228, y:  174, size: 275 },
+  "C#" : { x:  610, y:  224, size: 271 },
+  D    : { x: 1075, y:  164, size: 268 },
+  "D#" : { x: 1452, y:  292, size: 280 },
+  E    : { x: 1682, y:  177, size: 300 },
+  F    : { x: 1732, y:  568, size: 232 },
+  "F#" : { x: 1630, y:  872, size: 255 },
+  G    : { x: 1366, y:  721, size: 232 },
+  "G#" : { x: 1056, y:  868, size: 352 },
+  A    : { x:  626, y:  776, size: 257 },
+  "A#" : { x:  224, y:  846, size: 368 },
+  B    : { x:  319, y:  514, size: 316 },
+};

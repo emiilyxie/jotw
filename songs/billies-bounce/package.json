@@ -1,0 +1,20 @@
+{
+  "name": "billies-bounce",
+  "version": "1.0.0",
+  "scripts": {
+    "parse-midi": "node scripts/parse-midi.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts BilliesBounce out/billies-bounce.mp4",
+    "editor": "npx serve . -p 4001"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.484",
+    "@remotion/three": "^4.0.484",
+    "@tonejs/midi": "^2.0.28",
+    "remotion": "^4.0.484",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0"
+  }
+}

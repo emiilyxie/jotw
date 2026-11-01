@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# dependencies (anchored nowhere, so it also covers songs/*/node_modules)
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -16,6 +16,11 @@
 # next.js
 /.next/
 /out/
+
+# remotion renders + caches in each song project
+songs/*/out/
+songs/*/build/
+songs/*/.remotion/
 
 # production
 /build
@@ -32,6 +37,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+
+# local claude code settings (per-machine)
+.claude/settings.local.json
 
 # vercel
 .vercel

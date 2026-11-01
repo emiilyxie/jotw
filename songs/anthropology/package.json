@@ -1,0 +1,14 @@
+{
+  "name": "anthropology",
+  "version": "1.0.0",
+  "scripts": {
+    "parse-midi": "node scripts/parse-midi.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Anthropology out/anthropology.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.484",
+    "@tonejs/midi": "^2.0.28",
+    "remotion": "^4.0.484"
+  }
+}
